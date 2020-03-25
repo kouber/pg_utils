@@ -9,4 +9,7 @@ Components
 ----------
 
 rename_index.sql:
-    A function, allowing concurrent index rename without *Exclusive Lock* of the table for versions before PostgreSQL 12.
+    Concurrent index rename without *Exclusive Lock* of the table for versions before PostgreSQL 12.
+
+rename_database.sql:
+    Quick rename of a database (kill connections that might be stuck).
