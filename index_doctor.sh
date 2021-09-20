@@ -128,10 +128,10 @@ psql -F ' ' -AXqtc "`echo $query`" "$DB" | while read schema table size; do
 
   for indexname in $indexes; do
     if [ $PG_VERSION -lt 120000 ]; then
-      pg_repack --wait-timeout=3600 --no-kill-backend -i "$indexname" -d "$DB"
+      pg_repack --wait-timeout=3600 --no-kill-backend -i $indexname -d "$DB"
     else
-      echo -ne "`timestamp`$COLOR_NO\tReindexing \"$indexname\"...\t"
-      psql -AXqtc "REINDEX INDEX CONCURRENTLY \"$indexname\"" "$DB" > /dev/null
+      echo -ne "`timestamp`$COLOR_NO\tReindexing $indexname...\t"
+      psql -AXqtc "REINDEX INDEX CONCURRENTLY $indexname" "$DB" > /dev/null
       echo "done."
     fi
   done
