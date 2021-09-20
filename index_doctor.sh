@@ -112,7 +112,7 @@ query="
   FROM
     pg_stat_user_tables
   WHERE
-    schemaname NOT IN ('pg_catalog', 'information_schema') $skip_sql
+    schemaname !~ '^pg_temp' $skip_sql
   ORDER BY
     pg_total_relation_size(relid::regclass) DESC
   LIMIT
