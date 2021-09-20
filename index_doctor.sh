@@ -121,22 +121,22 @@ query="
     $OFFSET"
 
 i=1
-psql -F ' ' -AXqtc "`echo $query`" $DB | while read schema table size; do
+psql -F ' ' -AXqtc "`echo $query`" "$DB" | while read schema table size; do
   echo -e "\n`timestamp`\t$COLOR_RED⌛$COLOR_WHITE $schema.$table$COLOR_NO ($size) processing ($i/$LIMIT) ..."
 
-  indexes=`psql -AXqtc "WITH idx AS (SELECT indexrelid::regclass, (SELECT ROUND(free_percent::numeric, 2) FROM pgstattuple(indexrelid::regclass)) AS fpc FROM pg_index WHERE indrelid = '$schema.$table'::regclass  ) SELECT STRING_AGG(indexrelid::regclass::text, ' ') FROM idx WHERE fpc > $FPC_THRESHOLD" $DB`
+  indexes=`psql -AXqtc "WITH idx AS (SELECT indexrelid::regclass, (SELECT ROUND(free_percent::numeric, 2) FROM pgstattuple(indexrelid::regclass)) AS fpc FROM pg_index WHERE indrelid = '\"$schema\".\"$table\"'::regclass  ) SELECT STRING_AGG(indexrelid::regclass::text, ' ') FROM idx WHERE fpc > $FPC_THRESHOLD" "$DB"`
 
   for indexname in $indexes; do
     if [ $PG_VERSION -lt 120000 ]; then
-      pg_repack --wait-timeout=3600 --no-kill-backend -i $indexname -d $DB
+      pg_repack --wait-timeout=3600 --no-kill-backend -i "$indexname" -d "$DB"
     else
       echo -ne "`timestamp`$COLOR_NO\tReindexing \"$indexname\"...\t"
-      psql -AXqtc "REINDEX INDEX CONCURRENTLY $indexname" $DB > /dev/null
+      psql -AXqtc "REINDEX INDEX CONCURRENTLY \"$indexname\"" "$DB" > /dev/null
       echo "done."
     fi
   done
  
-  new_size=`psql -AXqtc "SELECT pg_size_pretty(pg_total_relation_size('$schema.$table'::regclass))" $DB`
+  new_size=`psql -AXqtc "SELECT pg_size_pretty(pg_total_relation_size('\"$schema\".\"$table\"'::regclass))" $DB`
   echo -e "`timestamp`\t$COLOR_GREEN✓$COLOR_WHITE $schema.$table$COLOR_NO ($new_size) done."
   ((i++))
 done
