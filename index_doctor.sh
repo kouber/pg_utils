@@ -29,7 +29,7 @@ Usage:
   $0 [OPTION] [database]
 
 Options:
-      --skip-table=TABLE(s)   CSV list of tables to skip (example: --skip-table=customer,employee)
+      --skip-table=TABLE(s)   CSV list of tables to skip (example: --skip-table=public.customer,internal.employee)
       --limit=N               process the top N biggest tables only (default: 20)
       --offset=N              offset the list (default: 0)
       --threshold=N           free percent threshold, as reported by pgstattuple (default: 40)
@@ -101,7 +101,7 @@ echo -e "`timestamp`\tIndex doctor start (top $LIMIT tables, $OFFSET offset)."
 
 if [ ! -z "$SKIP_TABLE" ]; then
   SKIP_TABLE=`echo "'$SKIP_TABLE'" | sed -e "s/,/', '/g"`
-  skip_sql="AND tablename NOT IN ($SKIP_TABLE)"
+  skip_sql="AND schemaname || '.' || relname NOT IN ($SKIP_TABLE)"
 fi
 
 query="
