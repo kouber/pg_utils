@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LIMIT=20
+LIMIT=40
 OFFSET=0
 FPC_THRESHOLD=40
 
