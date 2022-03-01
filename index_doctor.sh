@@ -9,6 +9,9 @@ do
   key="$1"
 
   case $key in
+    --table=*)
+    TABLE="${key#*=}"
+    ;;
     --skip-table=*)
     SKIP_TABLE="${key#*=}"
     ;;
@@ -29,10 +32,11 @@ Usage:
   $0 [OPTION] [database]
 
 Options:
-      --skip-table=TABLE(s)   CSV list of tables to skip (example: --skip-table=public.customer,internal.employee)
-      --limit=N               process the top N biggest tables only (default: 20)
-      --offset=N              offset the list (default: 0)
-      --threshold=N           free percent threshold, as reported by pgstattuple (default: 40)
+      --table=TABLE(s)       CSV list of tables to process (example: --table=public.player,audit.log)
+      --skip-table=TABLE(s)  CSV list of tables to skip    (example: --skip-table=public.customer,internal.employee)
+      --limit=N              process the top N biggest tables only (default: 20)
+      --offset=N             offset the list (default: 0)
+      --threshold=N          free percent threshold, as reported by pgstattuple (default: 40)
 
 EOHELP
     exit 0
@@ -99,6 +103,11 @@ COLOR_NO='\033[0m'
 
 echo -e "`timestamp`\tIndex doctor start (top $LIMIT tables, $OFFSET offset)."
 
+if [ ! -z "$TABLE" ]; then
+  TABLE=`echo "'$TABLE'" | sed -e "s/,/', '/g"`
+  tbl_sql="AND schemaname || '.' || relname IN ($TABLE)"
+fi
+
 if [ ! -z "$SKIP_TABLE" ]; then
   SKIP_TABLE=`echo "'$SKIP_TABLE'" | sed -e "s/,/', '/g"`
   skip_sql="AND schemaname || '.' || relname NOT IN ($SKIP_TABLE)"
@@ -112,7 +121,7 @@ query="
   FROM
     pg_stat_user_tables
   WHERE
-    schemaname !~ '^pg_temp' $skip_sql
+    schemaname !~ '^pg_temp' $tbl_sql $skip_sql
   ORDER BY
     pg_total_relation_size(relid::regclass) DESC
   LIMIT
