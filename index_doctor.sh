@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set +H
+
 LIMIT=40
 OFFSET=0
 FPC_THRESHOLD=40
@@ -14,6 +16,9 @@ do
     ;;
     --skip-table=*)
     SKIP_TABLE="${key#*=}"
+    ;;
+    --raw-sql=*)
+    RAW_SQL="${key#*=}"
     ;;
     --limit=*)
     LIMIT="${key#*=}"
@@ -34,6 +39,7 @@ Usage:
 Options:
       --table=TABLE(s)       CSV list of tables to process (example: --table=public.player,audit.log)
       --skip-table=TABLE(s)  CSV list of tables to skip    (example: --skip-table=public.customer,internal.employee)
+      --raw-sql=SQL          SQL code to add to the WHERE clause (example: --raw-sql="schemaname ~ 'public'")
       --limit=N              process the top N biggest tables only (default: 20)
       --offset=N             offset the list (default: 0)
       --threshold=N          free percent threshold, as reported by pgstattuple (default: 40)
@@ -113,6 +119,10 @@ if [ ! -z "$SKIP_TABLE" ]; then
   skip_sql="AND schemaname || '.' || relname NOT IN ($SKIP_TABLE)"
 fi
 
+if [ ! -z "$RAW_SQL" ]; then
+  raw_sql="AND $RAW_SQL"
+fi
+
 query="
   SELECT
     schemaname,
@@ -121,7 +131,7 @@ query="
   FROM
     pg_stat_user_tables
   WHERE
-    schemaname !~ '^pg_temp' $tbl_sql $skip_sql
+    schemaname !~ '^pg_temp' $tbl_sql $skip_sql $raw_sql
   ORDER BY
     pg_total_relation_size(relid::regclass) DESC
   LIMIT
