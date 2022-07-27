@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set +H
-
 LIMIT=40
 OFFSET=0
 FPC_THRESHOLD=40
