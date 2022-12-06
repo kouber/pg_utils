@@ -1,6 +1,5 @@
 #!/bin/bash
 
-LIMIT=40
 OFFSET=0
 FPC_THRESHOLD=40
 
@@ -38,7 +37,7 @@ Options:
       --table=TABLE(s)       CSV list of tables to process (example: --table=public.player,audit.log)
       --skip-table=TABLE(s)  CSV list of tables to skip    (example: --skip-table=public.customer,internal.employee)
       --raw-sql=SQL          SQL code to add to the WHERE clause (example: --raw-sql="schemaname ~ 'public'")
-      --limit=N              process the top N biggest tables only (default: 20)
+      --limit=N              process the top N biggest tables only (default: no limit)
       --offset=N             offset the list (default: 0)
       --threshold=N          free percent threshold, as reported by pgstattuple (default: 40)
 
@@ -68,7 +67,7 @@ if [ "$slave" = "1" ]; then
   exit 3
 fi
 
-PG_VERSION=`psql $DB -AXqtc "SHOW server_version_num"`
+PG_VERSION=`psql -AXqtc "SHOW server_version_num" $DB`
 
 declare -a exts=("pgstattuple")
 
@@ -77,21 +76,25 @@ if [ $PG_VERSION -lt 120000 ]; then
 fi
 
 for ext in "${exts[@]}"; do
-  ext_check=`psql $DB -AXqtc "SELECT oid FROM pg_extension WHERE extname='$ext'"`
+  ext_check=`psql -AXqtc "SELECT oid FROM pg_extension WHERE extname='$ext'" $DB`
   if [ -z "$ext_check" ]; then
     echo "Extension \"$ext\" is not installed."
     exit 2
   fi
 done
 
-if [[ "$LIMIT" =~ [^0-9] ]]; then
-  echo "Invalid limit argument."
-  exit 3
-fi
+if [ ! -z "$LIMIT" ]; then
+  if [[ "$LIMIT" =~ [^0-9] ]]; then
+    echo "Invalid limit argument."
+    exit 3
+  fi
 
-if [[ "$OFFSET" =~ [^0-9] ]]; then
-  echo "Invalid offset argument."
-  exit 3
+  if [[ "$OFFSET" =~ [^0-9] ]]; then
+    echo "Invalid offset argument."
+    exit 3
+  fi
+
+  limit_sql="LIMIT $LIMIT OFFSET $OFFSET"
 fi
 
 if [[ "$FPC_THRESHOLD" =~ [^0-9] ]]; then
@@ -105,7 +108,13 @@ COLOR_GREEN='\033[1;32m'
 COLOR_RED='\033[1;31m'
 COLOR_NO='\033[0m'
 
-echo -e "`timestamp`\tIndex doctor start (top $LIMIT tables, $OFFSET offset)."
+echo -ne "`timestamp`\tIndex doctor start "
+
+if [ ! -z "$limit_sql" ]; then
+  echo -n "(top $LIMIT tables, $OFFSET offset)"
+fi
+
+echo ""
 
 if [ ! -z "$TABLE" ]; then
   TABLE=`echo "'$TABLE'" | sed -e "s/,/', '/g"`
@@ -132,10 +141,7 @@ query="
     schemaname !~ '^pg_temp' $tbl_sql $skip_sql $raw_sql
   ORDER BY
     pg_total_relation_size(relid::regclass) DESC
-  LIMIT
-    $LIMIT
-  OFFSET
-    $OFFSET"
+  $limit_sql"
 
 i=1
 psql -F ' ' -AXqtc "`echo $query`" "$DB" | while read schema table size; do
