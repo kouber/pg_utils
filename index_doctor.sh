@@ -143,9 +143,13 @@ query="
     pg_total_relation_size(relid::regclass) DESC
   $limit_sql"
 
+if [ ! -z "$LIMIT" ]; then
+  LIMIT="/$LIMIT"
+fi
+
 i=1
 psql -F ' ' -AXqtc "`echo $query`" "$DB" | while read schema table size; do
-  echo -e "\n`timestamp`\t$COLOR_RED⌛$COLOR_WHITE $schema.$table$COLOR_NO ($size) processing ($i/$LIMIT) ..."
+  echo -e "\n`timestamp`\t$COLOR_RED⌛$COLOR_WHITE $schema.$table$COLOR_NO ($size) processing ($i$LIMIT) ..."
 
   indexes=`psql -AXqtc "WITH idx AS (SELECT indexrelid::regclass, (SELECT free_percent FROM pgstattuple(indexrelid::regclass)) AS fpc FROM pg_index WHERE indrelid = '\"$schema\".\"$table\"'::regclass AND indexrelid IN (SELECT oid FROM pg_class WHERE relam IN (SELECT oid FROM pg_am WHERE amname IN ('btree', 'hash', 'gist'))) ) SELECT STRING_AGG(indexrelid::regclass::text, ' ') FROM idx WHERE fpc > $FPC_THRESHOLD" "$DB"`
 
