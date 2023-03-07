@@ -108,13 +108,13 @@ COLOR_GREEN='\033[1;32m'
 COLOR_RED='\033[1;31m'
 COLOR_NO='\033[0m'
 
-echo -ne "`timestamp`\tIndex doctor start "
+echo -ne "`timestamp`\tIndex doctor start"
 
 if [ ! -z "$limit_sql" ]; then
-  echo -n "(top $LIMIT tables, $OFFSET offset)"
+  echo -n " (top $LIMIT tables, $OFFSET offset)"
 fi
 
-echo ""
+echo ", database = $DB"
 
 if [ ! -z "$TABLE" ]; then
   TABLE=`echo "'$TABLE'" | sed -e "s/,/', '/g"`
@@ -136,8 +136,12 @@ query="
     relname,
     pg_size_pretty(pg_total_relation_size(relid::regclass))
   FROM
-    pg_stat_user_tables
+    pg_stat_user_tables t
   WHERE
+    NOT EXISTS (
+      SELECT NULL FROM pg_class WHERE relkind = 'p' AND oid = t.relid
+    )
+  AND
     schemaname !~ '^pg_temp' $tbl_sql $skip_sql $raw_sql
   ORDER BY
     pg_total_relation_size(relid::regclass) DESC
